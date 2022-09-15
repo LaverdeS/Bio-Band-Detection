@@ -6,6 +6,7 @@
 #     #     write output to output folder
 
 """Build Graphic Interface to control parameters of the program"""
+import sys
 
 import cv2
 import numpy as np
@@ -24,8 +25,18 @@ from matplotlib import cm
 import json
 
 
+ADD_BORDER = False
+# white
+VALUE = [255, 255, 255]
+THICKNESS = 5
+
+
 def load_image(path):
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+    # add border to image
+    if ADD_BORDER:
+        img = cv2.copyMakeBorder(img, THICKNESS,THICKNESS,THICKNESS,THICKNESS, cv2.BORDER_CONSTANT, value=VALUE)
     return img
 
 
@@ -111,7 +122,7 @@ def filter_by_pixel_value(contours, img, args):
     filtered_contours = []
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
-        if np.mean(img[y:y + h, x:x + w]) < args.min_pixel_value:
+        if np.mean(img[y:y+h, x:x+w]) < args.min_pixel_value or np.mean(img[y:y+h, x:x+w]) > args.max_pixel_value:
             continue
         filtered_contours.append(contour)
     return filtered_contours
@@ -275,7 +286,6 @@ def parse_args():
 
     parser.add_argument("--min_dist_between_blobs", type=int, default=10)
 
-    parser.add_argument("--threshold", type=int, default=127)
     args = parser.parse_args()
     return args
 
@@ -297,11 +307,8 @@ class myGUI(object):
         self.contours = get_contours_from_images(load_images(path), args)
 
         # image from numpy array
-        self.image = cv2.imread(self.filenames[self.index], cv2.IMREAD_GRAYSCALE)
-        img = cv2.cvtColor(self.image, cv2.COLOR_GRAY2RGB)
-        cv2.drawContours(img, self.contours[self.index], -1, (0, 0, 255), 1)
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        self.image = Image.fromarray(img_rgb)
+        self.set_PIL_image(self.index)
+
         self.photo = ImageTk.PhotoImage(self.image)
         self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
 
@@ -436,7 +443,10 @@ class myGUI(object):
         # image from numpy array
         self.image = cv2.imread(self.filenames[index], cv2.IMREAD_GRAYSCALE)
         img = cv2.cvtColor(self.image, cv2.COLOR_GRAY2RGB)
-        cv2.drawContours(img, self.contours[index], -1, (0, 0, 255), 1)
+        # add border to image
+        if ADD_BORDER:
+            img = cv2.copyMakeBorder(img, THICKNESS,THICKNESS,THICKNESS,THICKNESS, cv2.BORDER_CONSTANT, value=VALUE)
+        cv2.drawContours(img, self.contours[index], -1, (255, 0, 255), 1)
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         self.image = Image.fromarray(img_rgb)
 
@@ -477,10 +487,10 @@ class myGUI(object):
         self.args.max_convexity = self.max_convexity.get()
         self.args.min_color = self.min_color.get()
         self.args.max_color = self.max_color.get()
-
-        # self.args.min_threshold = self.min_threshold.get()
-        # self.args.max_threshold = self.max_threshold.get()
-        # self.args.threshold_step = self.threshold_step.get()
+        self.args.min_dist_between_blobs = self.min_dist_between_blobs.get()
+        # get pixels values
+        self.args.min_pixel_value = self.min_pixel_value.get()
+        self.args.max_pixel_value = self.max_pixel_value.get()
 
         for k, v in self.args.__dict__.items():
             print(f"{k} : {v}")
@@ -528,9 +538,18 @@ def main():
 
     args = parse_args()
 
-    path = "../upwork/bio-band-detection/inputs/"
+    path = "./borders/"  #../upwork/bio-band-detection/inputs/
     images = load_images(path)
     images_ = load_image_filenames(path)
+
+    # # add white border to all images
+    # for filename, image in zip(images_, images):
+    #     image = cv2.copyMakeBorder(image, THICKNESS,THICKNESS,THICKNESS,THICKNESS, cv2.BORDER_CONSTANT, value=VALUE)
+    #     # save image
+    #     cv2.imwrite(f"./borders/{filename[-8:]}", image)
+    #
+    # sys.exit()
+
 
     contours = get_contours_from_images(images, args)
 
