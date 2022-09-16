@@ -28,7 +28,7 @@ import json
 ADD_BORDER = False
 # white
 VALUE = [255, 255, 255]
-THICKNESS = 5
+THICKNESS = 4
 
 
 def load_image(path):
